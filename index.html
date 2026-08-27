@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CalcuPlan Pro - Panel Nutricional Unificado</title>
+    <title>CalcuPlan Pro - Generador de Plan Nutricional</title>
     <style>
         :root {
             --bg-color: #0f172a;
             --card-bg: #1e293b;
             --text-color: #f8fafc;
             --accent-color: #38bdf8;
+            --success-color: #10b981;
             --danger-color: #f43f5e;
             --border-color: #334155;
         }
@@ -54,7 +55,7 @@
             font-weight: bold;
             color: #cbd5e1;
         }
-        select, input[type="text"] {
+        select, input[type="number"], input[type="text"] {
             padding: 10px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
@@ -70,6 +71,20 @@
             font-size: 0.9rem;
             cursor: pointer;
         }
+        .btn-generar {
+            background-color: var(--accent-color);
+            color: #0f172a;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            grid-column: 1 / -1;
+        }
+        .btn-generar:hover {
+            background-color: #7dd3fc;
+        }
         .suplementacion-box {
             background-color: #0284c715;
             border-left: 4px solid var(--accent-color);
@@ -79,22 +94,18 @@
             display: none;
             border: 1px solid var(--border-color);
         }
-        .recetas-grid {
+        .plan-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 15px;
+            margin-bottom: 25px;
         }
-        .receta-card {
+        .comida-card {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 15px;
-            transition: transform 0.2s, border-color 0.2s;
             position: relative;
-        }
-        .receta-card:hover {
-            transform: translateY(-3px);
-            border-color: var(--accent-color);
         }
         .badge {
             display: inline-block;
@@ -106,20 +117,26 @@
             color: var(--accent-color);
             margin-bottom: 8px;
         }
-        .badge-excluida {
-            background-color: var(--danger-color);
-            color: white;
-        }
         .macros {
             font-size: 0.85rem;
             color: #94a3b8;
             margin-top: 8px;
         }
-        .stats-bar {
+        .resumen-totales {
+            background-color: #1e293b;
+            border: 1px solid var(--success-color);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
+            justify-content: space-around;
+            text-align: center;
+        }
+        .resumen-totales div span {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--success-color);
         }
     </style>
 </head>
@@ -127,79 +144,76 @@
 
 <div class="container">
     <h1>CalcuPlan Pro</h1>
-    <p class="subtitle">Sistema Integral de Planificación Nutricional y Rendimiento</p>
+    <p class="subtitle">Motor Automatizado de Planificación Nutricional (90 Opciones)</p>
 
-    <!-- Panel de Control Principal Unificado -->
+    <!-- Panel de Necesidades y Parámetros -->
     <div class="panel-principal">
         <div class="control-group">
-            <label for="filtroTipo">Tipo de Comida:</label>
-            <select id="filtroTipo" onchange="renderizarApp()">
-                <option value="Todos">Todas (90 opciones)</option>
-                <option value="Desayuno">Desayuno</option>
-                <option value="Colación">Colación</option>
-                <option value="Almuerzo/Cena">Almuerzo / Cena</option>
-            </select>
+            <label for="caloriasObjetivo">Calorías Objetivo (kcal):</label>
+            <input type="number" id="caloriasObjetivo" value="2400" step="100">
         </div>
 
         <div class="control-group">
             <label for="selectSuplemento">Sugerir Suplementación:</label>
-            <select id="selectSuplemento" onchange="renderizarApp()">
+            <select id="selectSuplemento">
                 <option value="No">No</option>
-                <option value="Sí">Sí</option>
+                <option value="Sí" selected>Sí</option>
             </select>
         </div>
 
         <div class="control-group">
-            <label>Filtros de Exclusión:</label>
+            <label>Restricciones:</label>
             <label class="checkbox-group">
-                <input type="checkbox" id="excluirCarnesDesayuno" onchange="renderizarApp()" checked> 
-                Restringir Carnes/Pescados en Desayuno
+                <input type="checkbox" id="excluirCarnesDesayuno" checked> 
+                Sin Carnes/Pescados en Desayuno
             </label>
         </div>
+
+        <button class="btn-generar" onclick="generarPlanNutricional()">Generar Plan en Base a Necesidades</button>
     </div>
 
-    <!-- Módulo Dinámico de Suplementación -->
+    <!-- Módulo de Suplementación Condicional -->
     <div id="seccionSuplementacion" class="suplementacion-box">
-        <h3>💊 Sugerencias de Suplementación Activas</h3>
+        <h3>💊 Sugerencias de Suplementación para el Atleta</h3>
         <ul id="listaSuplementos" style="margin: 0; padding-left: 20px; font-size: 0.95rem;"></ul>
     </div>
 
-    <!-- Barra de Estado y Conteo -->
-    <div class="stats-bar">
-        <h2>Recetario Disponible</h2>
-        <span style="font-size: 1rem; color: var(--accent-color); font-weight: bold;">
-            Mostrando <span id="contadorRecetas">0</span> de 90 opciones
-        </span>
+    <!-- Resumen de Macros del Plan Generado -->
+    <div class="resumen-totales" id="resumenTotales">
+        <div>Calorías del Plan: <span id="totKcal">0 kcal</span></div>
+        <div>Proteínas: <span id="totProt">0 g</span></div>
+        <div>Carbohidratos: <span id="totCarb">0 g</span></div>
+        <div>Grasas: <span id="totGrasa">0 g</span></div>
     </div>
 
-    <!-- Listado de Recetas -->
-    <div id="gridRecetas" class="recetas-grid"></div>
+    <!-- Contenedor del Plan Diario Automatizado -->
+    <h2>Propuesta de Menú Diario</h2>
+    <div id="planContainer" class="plan-container"></div>
 </div>
 
 <script>
-    // 1. Generación de la Base de Datos de 90 Recetas Integrada
+    // 1. Base de Datos Completa de 90 Recetas (30 Desayunos, 30 Colaciones, 30 Almuerzos/Cenas)
     function generarBaseDeDatos() {
         let recetas = [];
         let categorias = ["Desayuno", "Colación", "Almuerzo/Cena"];
-        let ingredientesBase = ["Huevos y Avena", "Frutos Secos y Yogur", "Pechuga de Pollo", "Filete de Merluza", "Tostadas Integrales", "Batido Proteico", "Arroz con Atún", "Queso Untable y Semillas"];
+        let ingredientesBase = ["Huevos revueltos y tostadas", "Yogur con frutos secos", "Pechuga de pollo con puré", "Filete de merluza con ensalada", "Avena proteica", "Batido recovery", "Arroz con atún", "Queso y pan integral"];
         
         for (let i = 1; i <= 90; i++) {
             let catIndex = (i <= 30) ? 0 : (i <= 60) ? 1 : 2;
             let categoriaActual = categorias[catIndex];
             
-            // Simular presencia de carnes/pescados en algunas recetas para el filtro de exclusión
-            let tieneProteinaPesada = (i % 4 === 0 || i % 7 === 0) && categoriaActual === "Desayuno";
-            let nombreIngrediente = ingredientesBase[i % ingredientesBase.length];
+            // Simular si contiene proteína pesada (carne/pescado) para aplicar exclusión en desayuno
+            let tieneProteinaPesada = (i % 3 === 0) && categoriaActual === "Desayuno";
 
             recetas.push({
                 id: i,
-                nombre: `Receta #${i} (${nombreIngrediente})`,
+                nombre: `Opción #${i}: ${ingredientesBase[i % ingredientesBase.length]}`,
                 tipo: categoriaActual,
                 contieneProteinaPesada: tieneProteinaPesada,
-                calorias: 250 + (i * 7) % 450,
-                proteinas: 12 + (i * 3) % 35,
-                carbos: 20 + (i * 4) % 55,
-                grasas: 6 + (i * 2) % 18
+                calorias: 250 + (i * 13) % 350,
+                proteinas: 15 + (i * 3) % 25,
+                carbos: 25 + (i * 5) % 40,
+                grasas: 7 + (i * 2) % 12
             });
         }
         return recetas;
@@ -207,64 +221,89 @@
 
     const baseDatosRecetas = generarBaseDeDatos();
 
-    // 2. Lógica de renderizado y filtros integrados
-    function renderizarApp() {
-        const tipoSeleccionado = document.getElementById('filtroTipo').value;
+    // 2. Motor de Selección y Armado del Plan en Base a Necesidades
+    function generarPlanNutricional() {
+        const caloriasObjetivo = parseInt(document.getElementById('caloriasObjetivo').value) || 2000;
         const quiereSuplemento = document.getElementById('selectSuplemento').value;
         const excluirCarnesDesayuno = document.getElementById('excluirCarnesDesayuno').checked;
 
-        // Filtrado de recetas
-        let recetasFiltradas = baseDatosRecetas.filter(receta => {
-            // Filtro por tipo
-            if (tipoSeleccionado !== 'Todos' && receta.tipo !== tipoSeleccionado) {
-                return false;
-            }
-            // Filtro de exclusión de carnes/pescados pesados en desayunos
-            if (excluirCarnesDesayuno && receta.tipo === 'Desayuno' && receta.contieneProteinaPesada) {
+        // Filtrar el recetario según restricciones
+        let recetasDisponibles = baseDatosRecetas.filter(r => {
+            if (excluirCarnesDesayuno && r.tipo === 'Desayuno' && r.contieneProteinaPesada) {
                 return false;
             }
             return true;
         });
 
-        // Actualizar contador
-        document.getElementById('contadorRecetas').innerText = recetasFiltradas.length;
-        
-        // Renderizar grilla de tarjetas
-        const grid = document.getElementById('gridRecetas');
-        grid.innerHTML = '';
+        // Separar por categorías
+        let desayunos = recetasDisponibles.filter(r => r.tipo === 'Desayuno');
+        let colaciones = recetasDisponibles.filter(r => r.tipo === 'Colación');
+        let almuerzosCenas = recetasDisponibles.filter(r => r.tipo === 'Almuerzo/Cena');
 
-        recetasFiltradas.forEach(receta => {
+        // Seleccionar aleatoriamente o de forma estructurada para cubrir el día (Ej: Desayuno, Colación, Almuerzo, Colación 2, Cena)
+        let seleccionDesayuno = desayunos[Math.floor(Math.random() * desayunos.length)];
+        let seleccionColacion1 = colaciones[Math.floor(Math.random() * colaciones.length)];
+        let seleccionAlmuerzo = almuerzosCenas[Math.floor(Math.random() * almuerzosCenas.length)];
+        let seleccionColacion2 = colaciones[Math.floor(Math.random() * colaciones.length)];
+        let seleccionCena = almuerzosCenas[Math.floor(Math.random() * almuerzosCenas.length)];
+
+        let planDiario = [
+            { momento: 'Desayuno', receta: seleccionDesayuno },
+            { momento: 'Colación Mañana', receta: seleccionColacion1 },
+            { momento: 'Almuerzo', receta: seleccionAlmuerzo },
+            { momento: 'Colación Tarde', receta: seleccionColacion2 },
+            { momento: 'Cena', receta: seleccionCena }
+        ];
+
+        // Renderizar el plan en pantalla
+        const contenedor = document.getElementById('planContainer');
+        contenedor.innerHTML = '';
+
+        let totalKcal = 0, totalProt = 0, totalCarb = 0, totalGrasa = 0;
+
+        planDiario.forEach(item => {
+            let r = item.receta;
+            totalKcal += r.calorias;
+            totalProt += r.proteinas;
+            totalCarb += r.carbos;
+            totalGrasa += r.grasas;
+
             const card = document.createElement('div');
-            card.className = 'receta-card';
+            card.className = 'comida-card';
             card.innerHTML = `
-                <span class="badge">${receta.tipo}</span>
-                ${receta.contieneProteinaPesada ? '<span class="badge badge-excluida">Proteína Pesada</span>' : ''}
-                <h4 style="margin: 0 0 8px 0;">${receta.nombre}</h4>
+                <span class="badge">${item.momento}</span>
+                <h4 style="margin: 0 0 8px 0;">${r.nombre}</h4>
                 <div class="macros">
-                    🔥 ${receta.calorias} kcal | 🍗 P: ${receta.proteinas}g | 🥔 C: ${receta.carbos}g | 🥑 G: ${receta.grasas}g
+                    🔥 ${r.calorias} kcal | 🍗 P: ${r.proteinas}g | 🥔 C: ${r.carbos}g | 🥑 G: ${r.grasas}g
                 </div>
             `;
-            grid.appendChild(card);
+            contenedor.appendChild(card);
         });
 
-        // Gestión visual de suplementación condicional
+        // Actualizar resumen de totales
+        document.getElementById('totKcal').innerText = `${totalKcal} kcal (Obj: ${caloriasObjetivo})`;
+        document.getElementById('totProt').innerText = `${totalProt} g`;
+        document.getElementById('totCarb').innerText = `${totalCarb} g`;
+        document.getElementById('totGrasa').innerText = `${totalGrasa} g`;
+
+        // Gestionar módulo de suplementación condicional
         const cajaSuplemento = document.getElementById('seccionSuplementacion');
         const listaSuplementos = document.getElementById('listaSuplementos');
         
         if (quiereSuplemento === 'Sí') {
             cajaSuplemento.style.display = 'block';
             listaSuplementos.innerHTML = `
-                <li><strong>Creatina Monohidrato:</strong> 3 a 5g diarios (Optimización de fuerza y alta intensidad).</li>
-                <li><strong>Proteína de Suero (Whey Protein):</strong> 20 a 25g post-esfuerzo para síntesis proteica óptima.</li>
-                <li><strong>Electrolitos + Carbohidratos:</strong> Recomendado para sesiones intensas o prolongadas.</li>
+                <li><strong>Creatina Monohidrato:</strong> 3 a 5g diarios (Soporte para fuerza y alta intensidad).</li>
+                <li><strong>Proteína de Suero (Whey Protein):</strong> 20g post-entrenamiento para asegurar síntesis proteica óptima.</li>
+                <li><strong>Electrolitos:</strong> Sugerido para mantener el rendimiento hídrico diario.</li>
             `;
         } else {
             cajaSuplemento.style.display = 'none';
         }
     }
 
-    // Inicializar aplicación al cargar la página
-    window.onload = renderizarApp;
+    // Generar automáticamente al cargar
+    window.onload = generarPlanNutricional;
 </script>
 
 </body>
